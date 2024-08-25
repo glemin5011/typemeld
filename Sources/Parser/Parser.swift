@@ -41,9 +41,34 @@ final class DSLParser {
     return ast
   }
 
-  private func parseType(_ line: String) -> TypeNode {
-    let name = line.split(separator: " ")[1]
-    return TypeNode(name: String(name))
+  // private func parseType(_ line: String) -> TypeNode {
+  //   let name = line.split(separator: " ")[1]
+  //   return TypeNode(name: String(name))
+  // }
+
+  private func parseType(_ typeString: String) -> TypeNode {
+    // Check for Array type (ending with [])
+    if typeString.hasSuffix("[]") {
+      let elementType = String(typeString.dropLast(2))  // Remove the "[]" suffix
+      return TypeNode(name: "Array", genericType: parseType(elementType))
+    }
+
+    // Check for Record type (enclosed in {})
+    if typeString.hasPrefix("{") && typeString.hasSuffix("}") {
+      // Extract the inner content of the record
+      let recordContent = typeString.dropFirst().dropLast()
+      // Split the content by commas to get individual field definitions
+      let fields = recordContent.split(separator: ",").map { fieldString -> StructFieldNode in
+        let parts = fieldString.split(separator: ":").map {
+          $0.trimmingCharacters(in: .whitespaces)
+        }
+        return StructFieldNode(name: String(parts[0]), type: String(parts[1]), optional: false)
+      }
+      return TypeNode(name: "Record", fields: fields)
+    }
+
+    // Handle primitive or custom types
+    return TypeNode(name: typeString)
   }
 
   /// Parses a struct into an AST Node. Currently supports extending other structs.
@@ -109,7 +134,6 @@ final class DSLParser {
     var index = startIndex + 1
     while index < lines.count && !lines[index].starts(with: "}") {
       let line = lines[index]
-      print("LINE: ", line)
 
       // Convert Substring to String for regex matching
       let lineString = String(line)
@@ -148,12 +172,10 @@ final class DSLParser {
           ).map {
             $0.trimmingCharacters(in: CharacterSet.whitespaces)
           }
-          print("PARAM PARTS:", paramParts)
           guard paramParts.count == 2 else {
             print("Warning: Skipping malformed parameter in method definition: \(param)")
             return nil
           }
-          print("NAME: ", paramParts[0], "TYPE:", paramParts[1])
           return StructFieldNode(
             name: String(paramParts[0]), type: String(paramParts[1]), optional: false)
         }
@@ -172,57 +194,9 @@ final class DSLParser {
     return (interfaceNode, index)
   }
 
-  // public func parseFunctionSignature(_ line: String) -> FunctionSignatureNode {
-  //   // Define a regular expression pattern to capture function signature
-  //   let pattern = #"fn\s+(\w+)\(([^)]*)\)\s*:\s*(\w+)"#
-
-  //   guard let regex = try? NSRegularExpression(pattern: pattern, options: []) else {
-  //     print("Error: Could not create regex pattern.")
-  //     return FunctionSignatureNode(name: "", parameters: [], returnType: "Void")
-  //   }
-
-  //   guard
-  //     let match = regex.firstMatch(
-  //       in: line, options: [], range: NSRange(line.startIndex..., in: line))
-  //   else {
-  //     print("Warning: No match found for function signature: \(line)")
-  //     return FunctionSignatureNode(name: "", parameters: [], returnType: "Void")
-  //   }
-
-  //   // Extract function name
-  //   let fnNameRange = Range(match.range(at: 1), in: line)
-  //   let fnName = fnNameRange.flatMap { String(line[$0]) } ?? ""
-
-  //   // Extract parameter string and split by commas
-  //   let paramsRange = Range(match.range(at: 2), in: line)
-  //   let paramsString = paramsRange.flatMap { String(line[$0]) } ?? ""
-  //   let params: [StructFieldNode] =
-  //     paramsString.isEmpty
-  //     ? []
-  //     : paramsString.split(separator: ",").compactMap { param in
-  //       let paramParts = param.trimmingCharacters(in: .whitespaces).split(separator: ":").map {
-  //         $0.trimmingCharacters(in: .whitespaces)
-  //       }
-  //       print("PARAM PARTS:", paramParts)
-  //       guard paramParts.count == 2 else {
-  //         print("Warning: Skipping malformed parameter in function signature: \(param)")
-  //         return nil
-  //       }
-  //       print("NAME: ", paramParts[0], "TYPE:", paramParts[1])
-  //       return StructFieldNode(
-  //         name: String(paramParts[0]), type: String(paramParts[1]), optional: false)
-  //     }
-
-  //   // Extract return type
-  //   let returnTypeRange = Range(match.range(at: 3), in: line)
-  //   let returnType = returnTypeRange.flatMap { String(line[$0]) } ?? "Void"
-
-  //   return FunctionSignatureNode(name: fnName, parameters: params, returnType: returnType)
-  // }
-
   public func parseFunctionSignature(_ line: String) -> FunctionSignatureNode {
     // Define a regular expression pattern to capture function signature
-    let pattern = #"fn\s+(\w+)\(([^)]*)\)\s*:\s*(\w+)"#
+    let pattern = #"function\s+(\w+)\(([^)]*)\)\s*:\s*(\w+)"#
 
     guard let regex = try? NSRegularExpression(pattern: pattern, options: []) else {
       print("Error: Could not create regex pattern.")
@@ -237,18 +211,13 @@ final class DSLParser {
       return FunctionSignatureNode(name: "", parameters: [], returnType: "Void")
     }
 
-    // Debugging print statements
-    print("Regex matched for line: \(line)")
-
     // Extract function name
     let fnNameRange = Range(match.range(at: 1), in: line)
     let fnName = fnNameRange.flatMap { String(line[$0]) } ?? ""
-    print("Function name extracted: \(fnName)")
 
     // Extract parameter string and split by commas
     let paramsRange = Range(match.range(at: 2), in: line)
     let paramsString = paramsRange.flatMap { String(line[$0]) } ?? ""
-    print("Parameters string extracted: \(paramsString)")
 
     let params: [StructFieldNode] =
       paramsString.isEmpty
@@ -264,7 +233,6 @@ final class DSLParser {
           return nil
         }
 
-        print("Parsed parameter name: \(paramParts[0]), type: \(paramParts[1])")
         return StructFieldNode(
           name: String(paramParts[0]), type: String(paramParts[1]), optional: false)
       }
@@ -272,7 +240,6 @@ final class DSLParser {
     // Extract return type
     let returnTypeRange = Range(match.range(at: 3), in: line)
     let returnType = returnTypeRange.flatMap { String(line[$0]) } ?? "Void"
-    print("Return type extracted: \(returnType)")
 
     return FunctionSignatureNode(name: fnName, parameters: params, returnType: returnType)
   }

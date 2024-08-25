@@ -5,13 +5,17 @@ protocol Worker {
 protocol AdvancedWorker: Worker {
   func lead(teamSize: Int) -> Void
 }
-struct Person {
-  var id: Int
-  var name: String
-}
 struct Engineer {
   var id: Int
   var name: String
+  var tags: String[]
   var specialty: String
   var isWorking: Bool
 }
+func hire(person: Person, position: String) -> Bool
+struct Person {
+  var id: Int
+  var name: String
+  var tags: String[]
+}
+func addTags(person: Person, newTags: String[]) -> Person

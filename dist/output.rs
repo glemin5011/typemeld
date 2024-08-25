@@ -5,13 +5,17 @@ trait Worker {
 trait AdvancedWorker: Worker {
   fn lead(teamSize: i32) -> ();
 }
-struct Person {
-  id: i32,
-  name: String,
-}
 struct Engineer {
   id: i32,
   name: String,
+  tags: String[],
   specialty: String,
   isWorking: bool,
 }
+fn hire(person: Person, position: String) -> bool;
+struct Person {
+  id: i32,
+  name: String,
+  tags: String[],
+}
+fn addTags(person: Person, newTags: String[]) -> Person;

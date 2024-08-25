@@ -17,15 +17,23 @@ let dslScript = """
     lead(teamSize: Int32): Void
   }
 
-  struct Person {
-    id: Int32
-    name: String
-  }
-
   struct Engineer extends Person {
     specialty: String
     isWorking: Boolean
   }
+
+  function hire(person: Person, position: String): Boolean
+
+  struct Person {
+    id: Int32
+    name: String
+    tags: String[]
+  }
+
+  type KeyValue = { key: String, value: Int32 }
+
+  function addTags(person: Person, newTags: String[]): Person
+
   """
 
 let parser = DSLParser()
