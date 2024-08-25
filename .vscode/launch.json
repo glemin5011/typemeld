@@ -1,0 +1,28 @@
+{
+    "configurations": [
+        {
+            "type": "lldb",
+            "request": "launch",
+            "sourceLanguages": [
+                "swift"
+            ],
+            "args": [],
+            "cwd": "${workspaceFolder:typemeld}",
+            "name": "Debug typemeld",
+            "program": "${workspaceFolder:typemeld}/.build/debug/typemeld",
+            "preLaunchTask": "swift: Build Debug typemeld"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "sourceLanguages": [
+                "swift"
+            ],
+            "args": [],
+            "cwd": "${workspaceFolder:typemeld}",
+            "name": "Release typemeld",
+            "program": "${workspaceFolder:typemeld}/.build/release/typemeld",
+            "preLaunchTask": "swift: Build Release typemeld"
+        }
+    ]
+}

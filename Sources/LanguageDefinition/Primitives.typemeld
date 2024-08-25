@@ -1,0 +1,63 @@
+type Int8
+type Int16
+type Int32
+type Int64
+type UInt8
+type UInt16
+type UInt32
+type UInt64
+type Float
+type Double
+type Char
+type String
+type Boolean
+type Void
+type Null
+
+
+// Arrays
+type Array<T>
+
+// Tuples
+type Tuple<T1, T2, ..., Tn>
+
+// Structs
+struct User {
+    id: Int32
+    name: String
+    email: String?
+    isActive: Boolean
+}
+
+// Unions
+union Response {
+    Success: String
+    Error: Int32
+}
+
+
+interface Animal {
+    speak(): Void
+    move(distance: Int32): Void
+}
+
+// Implementing interfaces with just type matching (no body)
+struct Dog implements Animal {
+    name: String
+}
+
+
+// Function signatures without bodies
+function greet(name: String): String
+function calculateArea(radius: Float): Float
+function handleResponse(response: Response): Void
+
+// Generic struct
+struct Box<T> {
+    value: T
+}
+
+// Generic function signature
+function max<T>(a: T, b: T): T where T: Comparable
+
+
