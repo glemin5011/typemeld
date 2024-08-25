@@ -104,8 +104,10 @@ final class DSLParserTests: XCTestCase {
   }
 
   func testParseFunctionSignatureNode() {
-    let dsl = "fn hire(person: Person, position: String): Bool"
+    let dsl = "function hire(person: Person, position: String): Boolean"
     let ast = parser.parse(dsl)
+
+    print("AST: ", ast)
 
     XCTAssertEqual(ast.count, 1)
     if case let .functionSignatureNode(functionNode) = ast[0] {
