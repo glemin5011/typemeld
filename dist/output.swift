@@ -2,7 +2,7 @@ protocol Worker {
   func work(hours: Int) -> Void
   func report() -> String
 }
-protocol AdvancedWorker {
+protocol AdvancedWorker: Worker {
   func lead(teamSize: Int) -> Void
 }
 struct Person {
@@ -10,6 +10,8 @@ struct Person {
   var name: String
 }
 struct Engineer {
+  var id: Int
+  var name: String
   var specialty: String
   var isWorking: Bool
 }

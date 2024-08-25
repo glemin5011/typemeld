@@ -18,6 +18,11 @@ let package = Package(
       resources: [
         .process("LanguageDefinition/Primitives.typemeld")  // Declare the file as a resource
       ]
-    )
+    ),
+    .testTarget(
+      name: "Tests",  // Name of the test target
+      dependencies: ["typemeld"],  // The test target depends on the "typemeld" target
+      path: "Tests"  // Specify the path to the test directory
+    ),
   ]
 )

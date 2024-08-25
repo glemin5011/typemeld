@@ -16,15 +16,29 @@ class TypeScriptGenerator {
       case .typeNode(let typeNode):
         // Primitive types don't need explicit definition in TypeScript
         break
+
       case .structNode(let structNode):
-        lines.append("interface \(structNode.name) {")
+        // Handle extends for structs
+        if let parentStruct = structNode.extends {
+          lines.append("interface \(structNode.name) extends \(parentStruct) {")
+        } else {
+          lines.append("interface \(structNode.name) {")
+        }
+
         for field in structNode.fields {
           let optionalMark = field.optional ? " | undefined" : ""
           lines.append("  \(field.name): \(convertTypeToTypeScript(field.type))\(optionalMark);")
         }
         lines.append("}")
+
       case .interfaceNode(let interfaceNode):
-        lines.append("interface \(interfaceNode.name) {")
+        // Handle extends for interfaces
+        if let parentInterface = interfaceNode.extends {
+          lines.append("interface \(interfaceNode.name) extends \(parentInterface) {")
+        } else {
+          lines.append("interface \(interfaceNode.name) {")
+        }
+
         for method in interfaceNode.methods {
           let params = method.parameters.map { "\($0.name): \(convertTypeToTypeScript($0.type))" }
             .joined(separator: ", ")
@@ -32,15 +46,10 @@ class TypeScriptGenerator {
             "  \(method.name)(\(params)): \(convertTypeToTypeScript(method.returnType));")
         }
         lines.append("}")
+
       case .functionSignatureNode:
         print(
-          "Function signatures cannot be defined without implementatin in typescript. skipping...")
-      // let params = functionNode.parameters.map {
-      //   "\($0.name): \(convertTypeToTypeScript($0.type))"
-      // }.joined(separator: ", ")
-      // lines.append(
-      //   "function \(functionNode.name)(\(params)): \(convertTypeToTypeScript(functionNode.returnType));"
-      // )
+          "Function signatures cannot be defined without implementation in TypeScript. Skipping...")
       }
     }
 
