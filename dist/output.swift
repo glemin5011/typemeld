@@ -8,7 +8,7 @@ protocol AdvancedWorker: Worker {
 struct Engineer {
   var id: Int
   var name: String
-  var tags: String[]
+  var tags: [String]
   var specialty: String
   var isWorking: Bool
 }
@@ -16,6 +16,6 @@ func hire(person: Person, position: String) -> Bool
 struct Person {
   var id: Int
   var name: String
-  var tags: String[]
+  var tags: [String]
 }
-func addTags(person: Person, newTags: String[]) -> Person
+func addTags(person: Person, newTags: [String]) -> Person

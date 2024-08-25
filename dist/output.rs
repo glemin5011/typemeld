@@ -8,7 +8,7 @@ trait AdvancedWorker: Worker {
 struct Engineer {
   id: i32,
   name: String,
-  tags: String[],
+  tags: Vec<String>,
   specialty: String,
   isWorking: bool,
 }
@@ -16,6 +16,6 @@ fn hire(person: Person, position: String) -> bool;
 struct Person {
   id: i32,
   name: String,
-  tags: String[],
+  tags: Vec<String>,
 }
-fn addTags(person: Person, newTags: String[]) -> Person;
+fn addTags(person: Person, newTags: Vec<String>) -> Person;

@@ -1,9 +1,6 @@
 import Foundation
 
 /// Generator for Rust programming language, which takes in an AST and returns syntactically correct Rust types
-/// - Parameter ast: an instance of DSLNode
-/// - Returns: A string representing generated types based on the input AST
-/// - Throws: An error of type `InternalGeneratorError` in case error generation fails
 class RustGenerator {
   func generate(_ ast: [DSLNode]) -> String {
     var lines: [String] = []
@@ -18,7 +15,7 @@ class RustGenerator {
 
     for node in ast {
       switch node {
-      case .typeNode(let typeNode):
+      case .typeNode:
         // Primitive types don't need explicit definition in Rust
         break
 
@@ -72,8 +69,8 @@ class RustGenerator {
     return lines.joined(separator: "\n")
   }
 
-  private func convertTypeToRust(_ type: String) -> String {
-    switch type {
+  private func convertTypeToRust(_ type: TypeNode) -> String {
+    switch type.name {
     case "Int32":
       return "i32"
     case "Float":
@@ -86,8 +83,22 @@ class RustGenerator {
       return "bool"
     case "Void":
       return "()"
+    case "Array":
+      if let elementType = type.genericType {
+        return "Vec<\(convertTypeToRust(elementType))>"
+      } else {
+        return "Vec<()>"
+      }
+    case "Record":
+      // Create a tuple struct for the record
+      let fieldDefs =
+        type.fields?.map {
+          "\(convertTypeToRust(TypeNode(name: $0.type.name))): \(convertTypeToRust(TypeNode(name: $0.type.nodeType)))"
+        }
+        .joined(separator: ", ") ?? ""
+      return "(\(fieldDefs))"
     default:
-      return type  // Custom types or unrecognized types are returned as-is
+      return type.name  // Custom types or unrecognized types are returned as-is
     }
   }
 }

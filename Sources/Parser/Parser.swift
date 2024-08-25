@@ -47,6 +47,17 @@ final class DSLParser {
   // }
 
   private func parseType(_ typeString: String) -> TypeNode {
+    // Check for generic type (e.g., ApiResponse<T>)
+    if let genericStart = typeString.firstIndex(of: "<"),
+      let genericEnd = typeString.lastIndex(of: ">"),
+      genericStart < genericEnd
+    {
+      let baseTypeName = String(typeString[..<genericStart])
+      let genericTypeName = String(typeString[genericStart...].dropFirst().dropLast())  // Extract "T" from "<T>"
+      let genericTypeNode = parseType(genericTypeName)
+      return TypeNode(name: baseTypeName, genericType: genericTypeNode)
+    }
+
     // Check for Array type (ending with [])
     if typeString.hasSuffix("[]") {
       let elementType = String(typeString.dropLast(2))  // Remove the "[]" suffix
@@ -62,7 +73,8 @@ final class DSLParser {
         let parts = fieldString.split(separator: ":").map {
           $0.trimmingCharacters(in: .whitespaces)
         }
-        return StructFieldNode(name: String(parts[0]), type: String(parts[1]), optional: false)
+        return StructFieldNode(
+          name: String(parts[0]), type: parseType(String(parts[1])), optional: false)
       }
       return TypeNode(name: "Record", fields: fields)
     }
@@ -100,12 +112,13 @@ final class DSLParser {
         continue
       }
       let fieldName = parts[0]
-      let fieldType = parts[1]
-      let optional = fieldType.hasSuffix("?")
+      let fieldType = parseType(parts[1])  // Parse the type as TypeNode
+      let optional = parts[1].hasSuffix("?")
       fields.append(
         StructFieldNode(
           name: String(fieldName),
-          type: String(fieldType).replacingOccurrences(of: "?", with: ""), optional: optional))
+          type: fieldType,  // Use TypeNode here
+          optional: optional))
       index += 1
     }
 
@@ -176,16 +189,20 @@ final class DSLParser {
             print("Warning: Skipping malformed parameter in method definition: \(param)")
             return nil
           }
+          let paramTypeNode = parseType(paramParts[1])  // Use parseType to get TypeNode
           return StructFieldNode(
-            name: String(paramParts[0]), type: String(paramParts[1]), optional: false)
+            name: String(paramParts[0]),
+            type: paramTypeNode,  // Use TypeNode here
+            optional: false)
         }
 
       // Extract return type
       let returnTypeRange = Range(match.range(at: 3), in: lineString)
-      let returnType = returnTypeRange.flatMap { String(lineString[$0]) } ?? "Void"
+      let returnTypeString = returnTypeRange.flatMap { String(lineString[$0]) } ?? "Void"
+      let returnTypeNode = parseType(returnTypeString)  // Use parseType to get TypeNode
 
       methods.append(
-        InterfaceMethodNode(name: methodName, parameters: parameters, returnType: returnType))
+        InterfaceMethodNode(name: methodName, parameters: parameters, returnType: returnTypeNode))
       index += 1
     }
 
@@ -194,13 +211,13 @@ final class DSLParser {
     return (interfaceNode, index)
   }
 
-  public func parseFunctionSignature(_ line: String) -> FunctionSignatureNode {
-    // Define a regular expression pattern to capture function signature
-    let pattern = #"function\s+(\w+)\(([^)]*)\)\s*:\s*(\w+)"#
+  private func parseFunctionSignature(_ line: String) -> FunctionSignatureNode {
+    // Updated regular expression to capture generics and complex return types
+    let pattern = #"function\s+(\w+)\s*(<\w+>)?\(([^)]*)\)\s*:\s*([<>\w\[\]]+)"#
 
     guard let regex = try? NSRegularExpression(pattern: pattern, options: []) else {
       print("Error: Could not create regex pattern.")
-      return FunctionSignatureNode(name: "", parameters: [], returnType: "Void")
+      return FunctionSignatureNode(name: "", parameters: [], returnType: TypeNode(name: "Void"))
     }
 
     guard
@@ -208,7 +225,7 @@ final class DSLParser {
         in: line, options: [], range: NSRange(line.startIndex..., in: line))
     else {
       print("Warning: No match found for function signature: \(line)")
-      return FunctionSignatureNode(name: "", parameters: [], returnType: "Void")
+      return FunctionSignatureNode(name: "", parameters: [], returnType: TypeNode(name: "Void"))
     }
 
     // Extract function name
@@ -216,7 +233,7 @@ final class DSLParser {
     let fnName = fnNameRange.flatMap { String(line[$0]) } ?? ""
 
     // Extract parameter string and split by commas
-    let paramsRange = Range(match.range(at: 2), in: line)
+    let paramsRange = Range(match.range(at: 3), in: line)
     let paramsString = paramsRange.flatMap { String(line[$0]) } ?? ""
 
     let params: [StructFieldNode] =
@@ -233,15 +250,17 @@ final class DSLParser {
           return nil
         }
 
+        let paramTypeNode = parseType(paramParts[1])  // Use parseType to get TypeNode
         return StructFieldNode(
-          name: String(paramParts[0]), type: String(paramParts[1]), optional: false)
+          name: String(paramParts[0]), type: paramTypeNode, optional: false)
       }
 
     // Extract return type
-    let returnTypeRange = Range(match.range(at: 3), in: line)
-    let returnType = returnTypeRange.flatMap { String(line[$0]) } ?? "Void"
+    let returnTypeRange = Range(match.range(at: 4), in: line)
+    let returnTypeString = returnTypeRange.flatMap { String(line[$0]) } ?? "Void"
+    let returnTypeNode = parseType(returnTypeString)  // Use parseType to get TypeNode
 
-    return FunctionSignatureNode(name: fnName, parameters: params, returnType: returnType)
+    return FunctionSignatureNode(name: fnName, parameters: params, returnType: returnTypeNode)
   }
 
 }

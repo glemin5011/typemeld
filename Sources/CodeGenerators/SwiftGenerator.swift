@@ -14,11 +14,11 @@ class SwiftGenerator {
 
     for node in ast {
       switch node {
-      case let .typeNode(typeNode):
+      case .typeNode:
         // Primitive types don't need explicit definition in Swift
         break
 
-      case let .structNode(structNode):
+      case .structNode(let structNode):
         lines.append("struct \(structNode.name) {")
 
         // Gather fields including inherited ones
@@ -40,7 +40,7 @@ class SwiftGenerator {
         }
         lines.append("}")
 
-      case let .interfaceNode(interfaceNode):
+      case .interfaceNode(let interfaceNode):
         // Handle protocol inheritance
         if let parentInterface = interfaceNode.extends {
           lines.append("protocol \(interfaceNode.name): \(parentInterface) {")
@@ -56,7 +56,7 @@ class SwiftGenerator {
         }
         lines.append("}")
 
-      case let .functionSignatureNode(functionNode):
+      case .functionSignatureNode(let functionNode):
         let params = functionNode.parameters.map { "\($0.name): \(convertTypeToSwift($0.type))" }
           .joined(separator: ", ")
         lines.append(
@@ -67,8 +67,8 @@ class SwiftGenerator {
     return lines.joined(separator: "\n")
   }
 
-  private func convertTypeToSwift(_ type: String) -> String {
-    switch type {
+  private func convertTypeToSwift(_ type: TypeNode) -> String {
+    switch type.name {
     case "Int8", "Int16", "Int32", "Int64", "UInt8", "UInt16", "UInt32", "UInt64":
       return "Int"
     case "Float":
@@ -81,8 +81,19 @@ class SwiftGenerator {
       return "Bool"
     case "Void":
       return "Void"
+    case "Array":
+      if let elementType = type.genericType {
+        return "[\(convertTypeToSwift(elementType))]"
+      } else {
+        return "[Any]"
+      }
+    case "Record":
+      let fields =
+        type.fields?.map { "\($0.name): \(convertTypeToSwift(TypeNode(name: $0.type.nodeType)))" }
+        .joined(separator: ", ") ?? ""
+      return "[String: Any]"  // Simplified representation for Records in Swift
     default:
-      return type  // Custom types or unrecognized types are returned as-is
+      return type.name  // Custom types or unrecognized types are returned as-is
     }
   }
 }
