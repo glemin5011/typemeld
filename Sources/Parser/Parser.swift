@@ -8,13 +8,13 @@
 import Foundation
 
 final class DSLParser {
+
   func parse(_ dsl: String) -> [DSLNode] {
     // Split the DSL script into lines, trim whitespace, and remove empty lines or comments
     let lines = dsl.split(separator: "\n").map {
       $0.trimmingCharacters(in: .whitespacesAndNewlines)
     }.filter { !$0.isEmpty && !$0.hasPrefix("//") }
-    // Ensure 'lines' remains as [Substring]
-    let substrLines = lines.map { Substring($0) }  // This line ensures we work with [Substring] explicitly
+    let substrLines = lines.map { Substring($0) }
     var ast: [DSLNode] = []
 
     var index = 0
@@ -22,7 +22,8 @@ final class DSLParser {
       let line = substrLines[index]
 
       if line.hasPrefix("type ") {
-        ast.append(.typeNode(parseType(String(line))))
+        let typeNode = parseTypeDefinition(line)  // Use a new function to parse type definition
+        ast.append(.typeNode(typeNode))
       } else if line.hasPrefix("struct ") {
         let (structNode, newIndex) = parseStruct(substrLines, index)
         ast.append(.structNode(structNode))
@@ -41,11 +42,51 @@ final class DSLParser {
     return ast
   }
 
-  // private func parseType(_ line: String) -> TypeNode {
-  //   let name = line.split(separator: " ")[1]
-  //   return TypeNode(name: String(name))
-  // }
+  private func parseTypeDefinition(_ line: Substring) -> TypeNode {
+    let parts = line.split(separator: "=").map { $0.trimmingCharacters(in: .whitespaces) }
+    let typeName = parts[0].split(separator: " ")[1]  // Extract "KeyValue" from "type KeyValue"
+    let typeDefinition = parts[1]
+    let parsedType = parseType(String(typeDefinition))  // Use existing parseType function
+    return TypeNode(
+      name: String(typeName), genericType: parsedType.genericType, fields: parsedType.fields)
+  }
 
+  // private func parseType(_ typeString: String) -> TypeNode {
+  //   // Check for generic type (e.g., ApiResponse<T>)
+  //   if let genericStart = typeString.firstIndex(of: "<"),
+  //     let genericEnd = typeString.lastIndex(of: ">"),
+  //     genericStart < genericEnd
+  //   {
+  //     let baseTypeName = String(typeString[..<genericStart])
+  //     let genericTypeName = String(typeString[genericStart...].dropFirst().dropLast())  // Extract "T" from "<T>"
+  //     let genericTypeNode = parseType(genericTypeName)
+  //     return TypeNode(name: baseTypeName, genericType: genericTypeNode)
+  //   }
+
+  //   // Check for Array type (ending with [])
+  //   if typeString.hasSuffix("[]") {
+  //     let elementType = String(typeString.dropLast(2))  // Remove the "[]" suffix
+  //     return TypeNode(name: "Array", genericType: parseType(elementType))
+  //   }
+
+  //   // Check for Record type (enclosed in {})
+  //   if typeString.hasPrefix("{") && typeString.hasSuffix("}") {
+  //     // Extract the inner content of the record
+  //     let recordContent = typeString.dropFirst().dropLast()
+  //     // Split the content by commas to get individual field definitions
+  //     let fields = recordContent.split(separator: ",").map { fieldString -> StructFieldNode in
+  //       let parts = fieldString.split(separator: ":").map {
+  //         $0.trimmingCharacters(in: .whitespaces)
+  //       }
+  //       return StructFieldNode(
+  //         name: String(parts[0]), type: parseType(String(parts[1])), optional: false)
+  //     }
+  //     return TypeNode(name: "Record", fields: fields)
+  //   }
+
+  //   // Handle primitive or custom types
+  //   return TypeNode(name: typeString)
+  // }
   private func parseType(_ typeString: String) -> TypeNode {
     // Check for generic type (e.g., ApiResponse<T>)
     if let genericStart = typeString.firstIndex(of: "<"),
@@ -54,6 +95,17 @@ final class DSLParser {
     {
       let baseTypeName = String(typeString[..<genericStart])
       let genericTypeName = String(typeString[genericStart...].dropFirst().dropLast())  // Extract "T" from "<T>"
+
+      // Check if the base type is "Record" and handle it specifically
+      if baseTypeName == "Record" {
+        let keyValueTypes = genericTypeName.split(separator: ",").map {
+          $0.trimmingCharacters(in: .whitespaces)
+        }
+        if keyValueTypes.count == 2 {
+          return TypeNode(name: "Record", keyType: keyValueTypes[0], valueType: keyValueTypes[1])
+        }
+      }
+
       let genericTypeNode = parseType(genericTypeName)
       return TypeNode(name: baseTypeName, genericType: genericTypeNode)
     }
@@ -66,9 +118,7 @@ final class DSLParser {
 
     // Check for Record type (enclosed in {})
     if typeString.hasPrefix("{") && typeString.hasSuffix("}") {
-      // Extract the inner content of the record
       let recordContent = typeString.dropFirst().dropLast()
-      // Split the content by commas to get individual field definitions
       let fields = recordContent.split(separator: ",").map { fieldString -> StructFieldNode in
         let parts = fieldString.split(separator: ":").map {
           $0.trimmingCharacters(in: .whitespaces)

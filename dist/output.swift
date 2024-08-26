@@ -18,4 +18,13 @@ struct Person {
   var name: String
   var tags: [String]
 }
+struct KeyValue {
+  var key: String
+  var value: Int
+}
 func addTags(person: Person, newTags: [String]) -> Person
+func fetchData(url: String) -> ApiResponse
+struct SomeThing<T> {
+  var property: T
+  var another: [String: Any]
+}

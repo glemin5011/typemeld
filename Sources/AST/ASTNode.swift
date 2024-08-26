@@ -99,8 +99,14 @@ class TypeNode: ASTNode {
   let name: String
   var genericType: TypeNode?  // Used for arrays or other generic types
   var fields: [StructFieldNode]?  // Used for record types
+  var keyType: String? = nil  // For Record<K, V>
+  var valueType: String? = nil  // For Record<K, V>
 
-  init(name: String, genericType: TypeNode? = nil, fields: [StructFieldNode]? = nil) {
+  init(
+    name: String, genericType: TypeNode? = nil, fields: [StructFieldNode]? = nil,
+    keyType: String? = nil,
+    valueType: String? = nil
+  ) {
     self.name = name
     self.genericType = genericType
     self.fields = fields

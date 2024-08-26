@@ -15,9 +15,9 @@ class RustGenerator {
 
     for node in ast {
       switch node {
-      case .typeNode:
-        // Primitive types don't need explicit definition in Rust
-        break
+      // case .typeNode:
+      //   // Primitive types don't need explicit definition in Rust
+      //   break
 
       case .structNode(let structNode):
         lines.append("struct \(structNode.name) {")
@@ -63,6 +63,21 @@ class RustGenerator {
           .joined(separator: ", ")
         lines.append(
           "fn \(functionNode.name)(\(params)) -> \(convertTypeToRust(functionNode.returnType));")
+
+      case .typeNode(let typeNode):
+        if typeNode.name == "Record" {
+          let fields =
+            typeNode.fields?.map { "\($0.name): \(convertTypeToRust($0.type))" }.joined(
+              separator: ", ") ?? ""
+          lines.append("struct \(typeNode.name) { \(fields) }")
+        } else if let fields = typeNode.fields {
+          let typeDefinition = fields.map { "\($0.name): \(convertTypeToRust($0.type))" }.joined(
+            separator: ", ")
+          lines.append("struct \(typeNode.name) { \(typeDefinition) }")
+        } else {
+          lines.append("type \(typeNode.name) = \(convertTypeToRust(typeNode));")
+        }
+
       }
     }
 

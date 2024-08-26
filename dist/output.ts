@@ -14,3 +14,9 @@ interface Person {
   name: string;
   tags: string[];
 }
+type KeyValue = { key: string; value: number };
+
+interface SomeThing<T> {
+  property: T;
+  another: Record<string, any>;
+}

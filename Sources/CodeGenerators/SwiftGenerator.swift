@@ -14,9 +14,9 @@ class SwiftGenerator {
 
     for node in ast {
       switch node {
-      case .typeNode:
-        // Primitive types don't need explicit definition in Swift
-        break
+      // case .typeNode:
+      //   // Primitive types don't need explicit definition in Swift
+      //   break
 
       case .structNode(let structNode):
         lines.append("struct \(structNode.name) {")
@@ -61,6 +61,21 @@ class SwiftGenerator {
           .joined(separator: ", ")
         lines.append(
           "func \(functionNode.name)(\(params)) -> \(convertTypeToSwift(functionNode.returnType))")
+
+      case .typeNode(let typeNode):
+        if typeNode.name == "Record" {
+          let fields =
+            typeNode.fields?.map { "\($0.name): \(convertTypeToSwift($0.type))" }.joined(
+              separator: ", ") ?? ""
+          lines.append("struct \(typeNode.name) { \(fields) }")
+        } else if let fields = typeNode.fields {
+          let typeDefinition = fields.map { "var \($0.name): \(convertTypeToSwift($0.type))" }
+            .joined(separator: "\n  ")
+          lines.append("struct \(typeNode.name) {\n  \(typeDefinition)\n}")
+        } else {
+          lines.append("typealias \(typeNode.name) = \(convertTypeToSwift(typeNode))")
+        }
+
       }
     }
 

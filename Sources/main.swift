@@ -34,6 +34,13 @@ let dslScript = """
 
   function addTags(person: Person, newTags: String[]): Person
 
+  function fetchData<T>(url: String): ApiResponse<T>
+
+  struct SomeThing<T> {
+    property: T
+    another: Record<string, string>
+  }
+
   """
 
 let parser = DSLParser()

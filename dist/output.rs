@@ -18,4 +18,10 @@ struct Person {
   name: String,
   tags: Vec<String>,
 }
+struct KeyValue { key: String, value: i32 }
 fn addTags(person: Person, newTags: Vec<String>) -> Person;
+fn fetchData(url: String) -> ApiResponse;
+struct SomeThing<T> {
+  property: T,
+  another: (),
+}
