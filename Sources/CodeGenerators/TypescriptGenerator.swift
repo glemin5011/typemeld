@@ -6,10 +6,6 @@ class TypeScriptGenerator {
 
     for node in ast {
       switch node {
-      // case .typeNode:
-      //   // Primitive types or complex types don't need explicit definition in TypeScript
-      //   break
-
       case .structNode(let structNode):
         // Handle extends for structs
         if let parentStruct = structNode.extends {
@@ -52,43 +48,30 @@ class TypeScriptGenerator {
       //   "function \(functionNode.name)(\(params)): \(convertTypeToTypeScript(functionNode.returnType));"
       // )
 
-      // case .typeNode(let typeNode):
-      //   if typeNode.name == "Record" {
-      //     let fields =
-      //       typeNode.fields?.map { "\($0.name): \(convertTypeToTypeScript($0.type))" }.joined(
-      //         separator: "; ") ?? ""
-      //     lines.append("type \(typeNode.name) = { \(fields) };")
-      //   } else if let fields = typeNode.fields {
-      //     // Treat non-primitive types as interfaces for TypeScript
-      //     let typeDefinition = fields.map { "\($0.name): \(convertTypeToTypeScript($0.type))" }
-      //       .joined(separator: "; ")
-      //     lines.append("type \(typeNode.name) = { \(typeDefinition) };")
-      //   } else {
-      //     lines.append("type \(typeNode.name) = \(convertTypeToTypeScript(typeNode));")
-      //   }
-
       case .typeNode(let typeNode):
         if typeNode.name == "Record" {
           if let keyType = typeNode.keyType, let valueType = typeNode.valueType {
-            // Properly handle non-specific key records
             lines.append(
               "type \(typeNode.name) = Record<\(convertTypeToTypeScript(TypeNode(name: keyType))), \(convertTypeToTypeScript(TypeNode(name: valueType)))>;"
             )
           } else if let fields = typeNode.fields {
-            // Handle specific fields in records
             let fieldDefinitions = fields.map { "\($0.name): \(convertTypeToTypeScript($0.type))" }
               .joined(separator: "; ")
             lines.append("type \(typeNode.name) = { \(fieldDefinitions) };")
           } else {
-            lines.append("type \(typeNode.name) = Record<string, any>;")  // Default case
+            lines.append("type \(typeNode.name) = Record<string, any>;")
           }
         } else if let fields = typeNode.fields {
-          // Handle custom types defined as interfaces in TypeScript
           let typeDefinition = fields.map { "\($0.name): \(convertTypeToTypeScript($0.type))" }
             .joined(separator: "; ")
           lines.append("type \(typeNode.name) = { \(typeDefinition) };")
         } else {
-          lines.append("type \(typeNode.name) = \(convertTypeToTypeScript(typeNode));")
+          if typeNode.keyType != nil && typeNode.valueType != nil {
+            let tsType = convertTypeToTypeScript(typeNode)
+            lines.append("type \(typeNode.name) = \(tsType);")
+          } else {
+            lines.append("type \(typeNode.name) = \(convertTypeToTypeScript(typeNode));")
+          }
         }
 
       }
@@ -97,7 +80,6 @@ class TypeScriptGenerator {
     return lines.joined(separator: "\n")
   }
 
-  /// Converts DSL types to TypeScript types
   private func convertTypeToTypeScript(_ type: TypeNode) -> String {
     switch type.name {
     case "Int8", "Int16", "Int32", "Int64", "UInt8", "UInt16", "UInt32", "UInt64", "Float",
@@ -117,7 +99,7 @@ class TypeScriptGenerator {
       }
     case "Record":
       if let keyType = type.keyType, let valueType = type.valueType {
-        // Handle Record with non-specific keys
+        // Handle Record with specific key and value types
         return
           "Record<\(convertTypeToTypeScript(TypeNode(name: keyType))), \(convertTypeToTypeScript(TypeNode(name: valueType)))>"
       } else if let fields = type.fields {

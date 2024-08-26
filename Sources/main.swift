@@ -7,40 +7,43 @@
 
 import Foundation
 
+///  interface Worker {
+///    work(hours: Int32): Void
+///    report(): String
+///  }
+///
+///  interface AdvancedWorker extends Worker {
+///    lead(teamSize: Int32): Void
+///  }
+///
+///  struct Engineer extends Person {
+///    specialty: String
+///    isWorking: Boolean
+///  }
+///
+///  function hire(person: Person, position: String): Boolean
+///
+///  struct Person {
+///    id: Int32
+///    name: String
+///    tags: String[]
+///  }
+///
+///  type KeyValue = { key: String, value: Int32 }
+///
+///  function addTags(person: Person, newTags: String[]): Person
+///
+///  function fetchData<T>(url: String): ApiResponse<T>
+///
+///  struct SomeThing<T> {
+///    property: T
+///    another: Record<String, String>
+///  }
+
 let dslScript = """
-  interface Worker {
-    work(hours: Int32): Void
-    report(): String
-  }
 
-  interface AdvancedWorker extends Worker {
-    lead(teamSize: Int32): Void
-  }
 
-  struct Engineer extends Person {
-    specialty: String
-    isWorking: Boolean
-  }
-
-  function hire(person: Person, position: String): Boolean
-
-  struct Person {
-    id: Int32
-    name: String
-    tags: String[]
-  }
-
-  type KeyValue = { key: String, value: Int32 }
-
-  function addTags(person: Person, newTags: String[]): Person
-
-  function fetchData<T>(url: String): ApiResponse<T>
-
-  struct SomeThing<T> {
-    property: T
-    another: Record<string, string>
-  }
-
+  type SomethingHello = Record<String, String>
   """
 
 let parser = DSLParser()

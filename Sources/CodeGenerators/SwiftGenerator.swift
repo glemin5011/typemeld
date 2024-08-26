@@ -82,6 +82,36 @@ class SwiftGenerator {
     return lines.joined(separator: "\n")
   }
 
+  // private func convertTypeToSwift(_ type: TypeNode) -> String {
+  //   switch type.name {
+  //   case "Int8", "Int16", "Int32", "Int64", "UInt8", "UInt16", "UInt32", "UInt64":
+  //     return "Int"
+  //   case "Float":
+  //     return "Float"
+  //   case "Double":
+  //     return "Double"
+  //   case "String":
+  //     return "String"
+  //   case "Boolean":
+  //     return "Bool"
+  //   case "Void":
+  //     return "Void"
+  //   case "Array":
+  //     if let elementType = type.genericType {
+  //       return "[\(convertTypeToSwift(elementType))]"
+  //     } else {
+  //       return "[Any]"
+  //     }
+  //   case "Record":
+  //     let fields =
+  //       type.fields?.map { "\($0.name): \(convertTypeToSwift(TypeNode(name: $0.type.nodeType)))" }
+  //       .joined(separator: ", ") ?? ""
+  //     return "[String: Any]"  // Simplified representation for Records in Swift
+  //   default:
+  //     return type.name  // Custom types or unrecognized types are returned as-is
+  //   }
+  // }
+
   private func convertTypeToSwift(_ type: TypeNode) -> String {
     switch type.name {
     case "Int8", "Int16", "Int32", "Int64", "UInt8", "UInt16", "UInt32", "UInt64":
@@ -103,12 +133,20 @@ class SwiftGenerator {
         return "[Any]"
       }
     case "Record":
-      let fields =
-        type.fields?.map { "\($0.name): \(convertTypeToSwift(TypeNode(name: $0.type.nodeType)))" }
-        .joined(separator: ", ") ?? ""
-      return "[String: Any]"  // Simplified representation for Records in Swift
+      if let keyType = type.keyType, let valueType = type.valueType {
+        // Handle Record with specific key and value types
+        if keyType == "String" && valueType == "String" {
+          return "[String: String]"  // Specific case for Record<String, String>
+        } else {
+          return
+            "[\(convertTypeToSwift(TypeNode(name: keyType))): \(convertTypeToSwift(TypeNode(name: valueType)))]"
+        }
+      } else {
+        return "[String: Any]"  // Default case
+      }
     default:
       return type.name  // Custom types or unrecognized types are returned as-is
     }
   }
+
 }

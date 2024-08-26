@@ -9,9 +9,13 @@ class RustGenerator {
     var structMap: [String: StructNode] = [:]
     for node in ast {
       if case let .structNode(structNode) = node {
+
         structMap[structNode.name] = structNode
       }
+
     }
+
+    print("NODE: ", ast)
 
     for node in ast {
       switch node {
@@ -65,19 +69,21 @@ class RustGenerator {
           "fn \(functionNode.name)(\(params)) -> \(convertTypeToRust(functionNode.returnType));")
 
       case .typeNode(let typeNode):
+        print("INCOMING TYPE NODE: ", Serializer.serialize(typeNode) ?? "")
+
         if typeNode.name == "Record" {
           let fields =
             typeNode.fields?.map { "\($0.name): \(convertTypeToRust($0.type))" }.joined(
               separator: ", ") ?? ""
           lines.append("struct \(typeNode.name) { \(fields) }")
-        } else if let fields = typeNode.fields {
-          let typeDefinition = fields.map { "\($0.name): \(convertTypeToRust($0.type))" }.joined(
-            separator: ", ")
-          lines.append("struct \(typeNode.name) { \(typeDefinition) }")
+        } else if let keyType = typeNode.keyType, let valueType = typeNode.valueType {
+          let rustType =
+            "std::collections::HashMap<\(convertTypeToRust(TypeNode(name: keyType))), \(convertTypeToRust(TypeNode(name: valueType)))>"
+          lines.append("type \(typeNode.name) = \(rustType);")
         } else {
+          print("TYPE NODE: ", Serializer.serialize(typeNode) ?? "")
           lines.append("type \(typeNode.name) = \(convertTypeToRust(typeNode));")
         }
-
       }
     }
 
@@ -105,15 +111,17 @@ class RustGenerator {
         return "Vec<()>"
       }
     case "Record":
-      // Create a tuple struct for the record
-      let fieldDefs =
-        type.fields?.map {
-          "\(convertTypeToRust(TypeNode(name: $0.type.name))): \(convertTypeToRust(TypeNode(name: $0.type.nodeType)))"
-        }
-        .joined(separator: ", ") ?? ""
-      return "(\(fieldDefs))"
+      if let keyType = type.keyType, let valueType = type.valueType {
+        // Handle Record with specific key and value types
+        return
+          "std::collections::HashMap<\(convertTypeToRust(TypeNode(name: keyType))), \(convertTypeToRust(TypeNode(name: valueType)))>"
+      } else {
+        // Fallback if no key/value is specified
+        return "std::collections::HashMap<String, String>"
+      }
     default:
       return type.name  // Custom types or unrecognized types are returned as-is
     }
   }
+
 }
