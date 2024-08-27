@@ -14,10 +14,6 @@ class SwiftGenerator {
 
     for node in ast {
       switch node {
-      // case .typeNode:
-      //   // Primitive types don't need explicit definition in Swift
-      //   break
-
       case .structNode(let structNode):
         lines.append("struct \(structNode.name) {")
 
@@ -63,6 +59,7 @@ class SwiftGenerator {
           "func \(functionNode.name)(\(params)) -> \(convertTypeToSwift(functionNode.returnType))")
 
       case .typeNode(let typeNode):
+        print("typenode in switch: ", Serializer.serialize(typeNode) ?? "")
         if typeNode.name == "Record" {
           let fields =
             typeNode.fields?.map { "\($0.name): \(convertTypeToSwift($0.type))" }.joined(
@@ -72,6 +69,10 @@ class SwiftGenerator {
           let typeDefinition = fields.map { "var \($0.name): \(convertTypeToSwift($0.type))" }
             .joined(separator: "\n  ")
           lines.append("struct \(typeNode.name) {\n  \(typeDefinition)\n}")
+        } else if let keyType = typeNode.keyType,
+          let valueType = typeNode.valueType
+        {
+          lines.append("typealias \(typeNode.name) = [\(keyType): \(valueType)]")
         } else {
           lines.append("typealias \(typeNode.name) = \(convertTypeToSwift(typeNode))")
         }
@@ -82,46 +83,36 @@ class SwiftGenerator {
     return lines.joined(separator: "\n")
   }
 
-  // private func convertTypeToSwift(_ type: TypeNode) -> String {
-  //   switch type.name {
-  //   case "Int8", "Int16", "Int32", "Int64", "UInt8", "UInt16", "UInt32", "UInt64":
-  //     return "Int"
-  //   case "Float":
-  //     return "Float"
-  //   case "Double":
-  //     return "Double"
-  //   case "String":
-  //     return "String"
-  //   case "Boolean":
-  //     return "Bool"
-  //   case "Void":
-  //     return "Void"
-  //   case "Array":
-  //     if let elementType = type.genericType {
-  //       return "[\(convertTypeToSwift(elementType))]"
-  //     } else {
-  //       return "[Any]"
-  //     }
-  //   case "Record":
-  //     let fields =
-  //       type.fields?.map { "\($0.name): \(convertTypeToSwift(TypeNode(name: $0.type.nodeType)))" }
-  //       .joined(separator: ", ") ?? ""
-  //     return "[String: Any]"  // Simplified representation for Records in Swift
-  //   default:
-  //     return type.name  // Custom types or unrecognized types are returned as-is
-  //   }
-  // }
-
   private func convertTypeToSwift(_ type: TypeNode) -> String {
     switch type.name {
-    case "Int8", "Int16", "Int32", "Int64", "UInt8", "UInt16", "UInt32", "UInt64":
-      return "Int"
-    case "Float":
+    case "Int8":
+      return "Int8"
+    case "Int16":
+      return "Int16"
+    case "Int32":
+      return "Int32"
+    case "Int64":
+      return "Int64"
+    case "UInt8":
+      return "UInt8"
+    case "UInt16":
+      return "UInt16"
+    case "UInt32":
+      return "UInt32"
+    case "UInt64":
+      return "UInt64"
+    case "Float32":
       return "Float"
-    case "Double":
+    case "Float64":
       return "Double"
+    case "Float":  // Legacy or shorthand support
+      return "Float"  // Assuming `Float` as shorthand for `Float32`
+    case "Double":  // Legacy or shorthand support
+      return "Double"  // Assuming `Double` as shorthand for `Float64`
     case "String":
       return "String"
+    case "Char":
+      return "Character"
     case "Boolean":
       return "Bool"
     case "Void":
@@ -135,14 +126,11 @@ class SwiftGenerator {
     case "Record":
       if let keyType = type.keyType, let valueType = type.valueType {
         // Handle Record with specific key and value types
-        if keyType == "String" && valueType == "String" {
-          return "[String: String]"  // Specific case for Record<String, String>
-        } else {
-          return
-            "[\(convertTypeToSwift(TypeNode(name: keyType))): \(convertTypeToSwift(TypeNode(name: valueType)))]"
-        }
+        return
+          "[\(convertTypeToSwift(TypeNode(name: keyType))): \(convertTypeToSwift(TypeNode(name: valueType)))]"
       } else {
-        return "[String: Any]"  // Default case
+        // Default fallback if no key/value is specified
+        return "[String: Any]"
       }
     default:
       return type.name  // Custom types or unrecognized types are returned as-is

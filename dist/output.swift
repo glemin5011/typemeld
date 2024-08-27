@@ -1,1 +1,3 @@
-typealias SomethingHello = SomethingHello
+struct LogEntry {
+  var message: String
+}

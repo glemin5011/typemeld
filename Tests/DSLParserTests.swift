@@ -95,23 +95,6 @@ final class DSLParserTests: XCTestCase {
   }
 
   // Test for Function Signature Node
-  //   func testParseFunctionSignatureNode() {
-  //     let dsl = "function hire(person: Person, position: String): Boolean"
-  //     let ast = parser.parse(dsl)
-
-  //     XCTAssertEqual(ast.count, 1)
-  //     if case let .functionSignatureNode(functionNode) = ast[0] {
-  //       XCTAssertEqual(functionNode.name, "hire")
-  //       XCTAssertEqual(functionNode.parameters.count, 2)
-  //       XCTAssertEqual(functionNode.parameters[0].name, "person")
-  //       XCTAssertEqual(functionNode.parameters[0].type.name, "Person")
-  //       XCTAssertEqual(functionNode.parameters[1].name, "position")
-  //       XCTAssertEqual(functionNode.parameters[1].type.name, "String")
-  //       XCTAssertEqual(functionNode.returnType.name, "Boolean")
-  //     } else {
-  //       XCTFail("Expected functionSignatureNode, got \(ast[0])")
-  //     }
-  //   }
   func testParseFunctionSignatureNode() {
     let dsl = "function hire(person: Person, position: String): Boolean"
     let ast = parser.parse(dsl)
@@ -158,6 +141,7 @@ final class DSLParserTests: XCTestCase {
     }
   }
 
+  // Test for Generic Types
   func testParseGenericTypes() {
     let dsl = "function fetchData<T>(url: String): ApiResponse<T>"
     let ast = parser.parse(dsl)
@@ -176,6 +160,8 @@ final class DSLParserTests: XCTestCase {
     }
   }
 
+  // Test for Record Type Parsing
+  // Test for Record Type Parsing
   func testParseRecordType() {
     let dsl = """
       struct LogEntry {
@@ -189,20 +175,89 @@ final class DSLParserTests: XCTestCase {
     if case let .structNode(structNode) = ast[0] {
       XCTAssertEqual(structNode.name, "LogEntry")
       XCTAssertEqual(structNode.fields.count, 2)
+
       XCTAssertEqual(structNode.fields[0].name, "message")
       XCTAssertEqual(structNode.fields[0].type.name, "String")
       XCTAssertEqual(structNode.fields[0].optional, false)
+
       XCTAssertEqual(structNode.fields[1].name, "timestamp")
       XCTAssertEqual(structNode.fields[1].type.name, "Record")
-      XCTAssertEqual(structNode.fields[1].type.fields?.count, 2)
-      XCTAssertEqual(structNode.fields[1].type.fields?[0].name, "seconds")
-      XCTAssertEqual(structNode.fields[1].type.fields?[0].type.name, "Int32")
-      XCTAssertEqual(structNode.fields[1].type.fields?[1].name, "nanos")
-      XCTAssertEqual(structNode.fields[1].type.fields?[1].type.name, "Int32")
+
+      XCTAssertEqual(structNode.fields[1].type.fields?.count, 2)  // Ensure two fields are parsed
+
+      if let timestampFields = structNode.fields[1].type.fields {
+        XCTAssertEqual(timestampFields[0].name, "seconds")
+        XCTAssertEqual(timestampFields[0].type.name, "Int32")
+        XCTAssertEqual(timestampFields[1].name, "nanos")
+        XCTAssertEqual(timestampFields[1].type.name, "Int32")
+      } else {
+        XCTFail("Expected fields for timestamp, got nil")
+      }
+
     } else {
       XCTFail("Expected structNode, got \(ast[0])")
     }
   }
 
-  // Additional tests for edge cases and malformed inputs can be added here.
+  // Test for Type Definition
+  func testParseTypeDefinition() {
+    let dsl = "type KeyValue = { key: String, value: Int32 }"
+    let ast = parser.parse(dsl)
+
+    XCTAssertEqual(ast.count, 1)
+    if case let .typeNode(typeNode) = ast[0] {
+      XCTAssertEqual(typeNode.name, "KeyValue")
+      XCTAssertEqual(typeNode.fields?.count, 2)
+      XCTAssertEqual(typeNode.fields?[0].name, "key")
+      XCTAssertEqual(typeNode.fields?[0].type.name, "String")
+      XCTAssertEqual(typeNode.fields?[1].name, "value")
+      XCTAssertEqual(typeNode.fields?[1].type.name, "Int32")
+    } else {
+      XCTFail("Expected typeNode, got \(ast[0])")
+    }
+  }
+
+  // Test for Optional Fields in Struct
+  func testParseStructWithOptionalFields() {
+    let dsl = """
+      struct User {
+          id: Int32
+          name: String?
+          age: Int32?
+      }
+      """
+    let ast = parser.parse(dsl)
+
+    XCTAssertEqual(ast.count, 1)
+    if case let .structNode(structNode) = ast[0] {
+      XCTAssertEqual(structNode.name, "User")
+      XCTAssertEqual(structNode.fields.count, 3)
+      XCTAssertEqual(structNode.fields[0].name, "id")
+      XCTAssertEqual(structNode.fields[0].type.name, "Int32")
+      XCTAssertEqual(structNode.fields[0].optional, false)
+      XCTAssertEqual(structNode.fields[1].name, "name")
+      XCTAssertEqual(structNode.fields[1].type.name, "String")
+      XCTAssertEqual(structNode.fields[1].optional, true)
+      XCTAssertEqual(structNode.fields[2].name, "age")
+      XCTAssertEqual(structNode.fields[2].type.name, "Int32")
+      XCTAssertEqual(structNode.fields[2].optional, true)
+    } else {
+      XCTFail("Expected structNode, got \(ast[0])")
+    }
+  }
+
+  // Additional tests for edge cases and malformed inputs
+  func testParseInvalidSyntax() {
+    let dsl = "strct InvalidStruct { name: String }"  // Invalid 'struct' keyword
+    let ast = parser.parse(dsl)
+
+    XCTAssertEqual(ast.count, 0)
+  }
+
+  func testParseEmptyInput() {
+    let dsl = ""
+    let ast = parser.parse(dsl)
+
+    XCTAssertEqual(ast.count, 0)
+  }
 }

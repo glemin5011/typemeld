@@ -1,1 +1,3 @@
-type SomethingHello = SomethingHello;
+struct LogEntry {
+  message: String,
+}

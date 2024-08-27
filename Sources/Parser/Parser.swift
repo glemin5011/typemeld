@@ -25,6 +25,7 @@ final class DSLParser {
 
       if line.hasPrefix("type ") {
         let typeNode = parseTypeDefinition(line)  // Use a new function to parse type definition
+        print("TypeNode HERE:", Serializer.serialize(typeNode) ?? "")
         ast.append(.typeNode(typeNode))
       } else if line.hasPrefix("struct ") {
         let (structNode, newIndex) = parseStruct(substrLines, index)
@@ -55,7 +56,8 @@ final class DSLParser {
 
     print("Serialized type: ", Serializer.serialize(parsedType) ?? "")
     return TypeNode(
-      name: String(typeName), genericType: parsedType.genericType, fields: parsedType.fields)
+      name: String(typeName), genericType: parsedType.genericType, fields: parsedType.fields,
+      keyType: parsedType.keyType, valueType: parsedType.valueType)
   }
 
   private func parseRecordType(genericTypeName: String) -> TypeNode {
@@ -77,8 +79,6 @@ final class DSLParser {
     }
 
     if keyValueTypes.count == 2 {
-      print("KV types: ", keyValueTypes)
-
       let typeNode = TypeNode(
         name: "Record", keyType: keyValueTypes[0], valueType: keyValueTypes[1])
 
@@ -89,48 +89,6 @@ final class DSLParser {
       return TypeNode(name: "Record", keyType: "String", valueType: "Any")  // Default fallback
     }
   }
-
-  // private func parseType(_ typeString: String) -> TypeNode {
-  //   // Check for generic type (e.g., ApiResponse<T>)
-  //   if let genericStart = typeString.firstIndex(of: "<"),
-  //     let genericEnd = typeString.lastIndex(of: ">"),
-  //     genericStart < genericEnd
-  //   {
-
-  //     let baseTypeName = String(typeString[..<genericStart])
-  //     let genericTypeName = String(typeString[genericStart...].dropFirst().dropLast())  // Extract the inner part of "<...>"
-
-  //     // Check if the base type is "Record" and handle it specifically
-  //     if baseTypeName == "Record" {
-  //       return parseRecordType(genericTypeName: genericTypeName)
-  //     }
-
-  //     let genericTypeNode = parseType(genericTypeName)
-  //     return TypeNode(name: baseTypeName, genericType: genericTypeNode)
-  //   }
-
-  //   // Check for Array type (ending with [])
-  //   if typeString.hasSuffix("[]") {
-  //     let elementType = String(typeString.dropLast(2))  // Remove the "[]" suffix
-  //     return TypeNode(name: "Array", genericType: parseType(elementType))
-  //   }
-
-  //   // Check for Record type (enclosed in {})
-  //   if typeString.hasPrefix("{") && typeString.hasSuffix("}") {
-  //     let recordContent = typeString.dropFirst().dropLast()
-  //     let fields = recordContent.split(separator: ",").map { fieldString -> StructFieldNode in
-  //       let parts = fieldString.split(separator: ":").map {
-  //         $0.trimmingCharacters(in: .whitespaces)
-  //       }
-  //       return StructFieldNode(
-  //         name: String(parts[0]), type: parseType(String(parts[1])), optional: false)
-  //     }
-  //     return TypeNode(name: "Record", fields: fields)
-  //   }
-
-  //   // Handle primitive or custom types
-  //   return TypeNode(name: typeString)
-  // }
 
   private func parseType(_ typeString: String) -> TypeNode {
     // Check for generic type (e.g., SomeThing<T> or Record<string, string>)
@@ -161,15 +119,24 @@ final class DSLParser {
     // Check for Record type (enclosed in {})
     if typeString.hasPrefix("{") && typeString.hasSuffix("}") {
       let recordContent = typeString.dropFirst().dropLast()
-      let fields = recordContent.split(separator: ",").map { fieldString -> StructFieldNode in
+
+      let fields = recordContent.split(separator: ",").compactMap {
+        fieldString -> StructFieldNode? in
         let parts = fieldString.split(separator: ":").map {
           $0.trimmingCharacters(in: .whitespaces)
         }
+
+        guard parts.count == 2 else {
+          print("Warning: Malformed record field: \(fieldString)")
+          return nil
+        }
+
         return StructFieldNode(
           name: String(parts[0]),
           type: parseType(String(parts[1])),
           optional: false)
       }
+
       return TypeNode(name: "Record", fields: fields)
     }
 
@@ -182,6 +149,7 @@ final class DSLParser {
   ///   - lines:
   ///   - startIndex:
   /// - Returns:
+
   private func parseStruct(_ lines: [Substring], _ startIndex: Int) -> (StructNode, Int) {
     let structDeclaration = lines[startIndex].split(separator: " ")
     let structName = structDeclaration[1]

@@ -68,6 +68,7 @@ class TypeScriptGenerator {
         } else {
           if typeNode.keyType != nil && typeNode.valueType != nil {
             let tsType = convertTypeToTypeScript(typeNode)
+            print("TS type", tsType)
             lines.append("type \(typeNode.name) = \(tsType);")
           } else {
             lines.append("type \(typeNode.name) = \(convertTypeToTypeScript(typeNode));")
@@ -85,15 +86,19 @@ class TypeScriptGenerator {
     case "Int8", "Int16", "Int32", "Int64", "UInt8", "UInt16", "UInt32", "UInt64", "Float",
       "Double":
       return "number"
-    case "Char", "String":
+    case "Float32", "Float64":
+      return "number"  // Typescript treats all floating-point numbers as 'number'
+    case "Char":
+      return "string"  // TypeScript does not have a 'char' type, so it's represented as 'string'
+    case "String":
       return "string"
     case "Boolean":
       return "boolean"
     case "Void":
       return "void"
     case "Array":
-      if let genericType = type.genericType {
-        return "\(convertTypeToTypeScript(genericType))[]"
+      if let elementType = type.genericType {
+        return "\(convertTypeToTypeScript(elementType))[]"
       } else {
         return "any[]"  // Fallback if generic type is not specified
       }
@@ -108,7 +113,18 @@ class TypeScriptGenerator {
         return "{ \(fieldDefinitions) }"
       }
       return "Record<string, any>"  // Default case if we have no fields or key/value
+    case "Optional":
+      if let genericType = type.genericType {
+        return "\(convertTypeToTypeScript(genericType)) | undefined"
+      } else {
+        return "any | undefined"
+      }
     default:
+      if let keyType = type.keyType, let valueType = type.valueType {
+        return
+          "Record<\(convertTypeToTypeScript(TypeNode(name: keyType))), \(convertTypeToTypeScript(TypeNode(name: valueType)))>"
+      }
+      print("TYPE: ", Serializer.serialize(type) ?? "")
       return type.name  // Custom types or unrecognized types are returned as-is
     }
   }

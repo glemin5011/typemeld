@@ -1,1 +1,3 @@
-type SomethingHello = SomethingHello;
+interface LogEntry {
+  message: string;
+}

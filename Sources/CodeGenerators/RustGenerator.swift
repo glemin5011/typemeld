@@ -9,20 +9,13 @@ class RustGenerator {
     var structMap: [String: StructNode] = [:]
     for node in ast {
       if case let .structNode(structNode) = node {
-
         structMap[structNode.name] = structNode
       }
 
     }
 
-    print("NODE: ", ast)
-
     for node in ast {
       switch node {
-      // case .typeNode:
-      //   // Primitive types don't need explicit definition in Rust
-      //   break
-
       case .structNode(let structNode):
         lines.append("struct \(structNode.name) {")
 
@@ -69,8 +62,6 @@ class RustGenerator {
           "fn \(functionNode.name)(\(params)) -> \(convertTypeToRust(functionNode.returnType));")
 
       case .typeNode(let typeNode):
-        print("INCOMING TYPE NODE: ", Serializer.serialize(typeNode) ?? "")
-
         if typeNode.name == "Record" {
           let fields =
             typeNode.fields?.map { "\($0.name): \(convertTypeToRust($0.type))" }.joined(
@@ -81,7 +72,6 @@ class RustGenerator {
             "std::collections::HashMap<\(convertTypeToRust(TypeNode(name: keyType))), \(convertTypeToRust(TypeNode(name: valueType)))>"
           lines.append("type \(typeNode.name) = \(rustType);")
         } else {
-          print("TYPE NODE: ", Serializer.serialize(typeNode) ?? "")
           lines.append("type \(typeNode.name) = \(convertTypeToRust(typeNode));")
         }
       }
@@ -92,14 +82,34 @@ class RustGenerator {
 
   private func convertTypeToRust(_ type: TypeNode) -> String {
     switch type.name {
+    case "Int8":
+      return "i8"
+    case "Int16":
+      return "i16"
     case "Int32":
       return "i32"
-    case "Float":
+    case "Int64":
+      return "i64"
+    case "UInt8":
+      return "u8"
+    case "UInt16":
+      return "u16"
+    case "UInt32":
+      return "u32"
+    case "UInt64":
+      return "u64"
+    case "Float32":
       return "f32"
-    case "Double":
+    case "Float64":
       return "f64"
+    case "Float":  // Legacy or shorthand support
+      return "f32"  // Assuming `Float` as shorthand for `f32`
+    case "Double":  // Legacy or shorthand support
+      return "f64"  // Assuming `Double` as shorthand for `f64`
     case "String":
       return "String"
+    case "Char":
+      return "char"
     case "Boolean":
       return "bool"
     case "Void":
