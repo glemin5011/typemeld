@@ -11,7 +11,6 @@ class RustGenerator {
       if case let .structNode(structNode) = node {
         structMap[structNode.name] = structNode
       }
-
     }
 
     for node in ast {
@@ -62,11 +61,10 @@ class RustGenerator {
           "fn \(functionNode.name)(\(params)) -> \(convertTypeToRust(functionNode.returnType));")
 
       case .typeNode(let typeNode):
-        if typeNode.name == "Record" {
-          let fields =
-            typeNode.fields?.map { "\($0.name): \(convertTypeToRust($0.type))" }.joined(
-              separator: ", ") ?? ""
-          lines.append("struct \(typeNode.name) { \(fields) }")
+        if let fields = typeNode.fields {
+          let structFields = fields.map { "\($0.name): \(convertTypeToRust($0.type))" }.joined(
+            separator: ", ")
+          lines.append("struct \(typeNode.name) { \(structFields) }")
         } else if let keyType = typeNode.keyType, let valueType = typeNode.valueType {
           let rustType =
             "std::collections::HashMap<\(convertTypeToRust(TypeNode(name: keyType))), \(convertTypeToRust(TypeNode(name: valueType)))>"
@@ -121,17 +119,18 @@ class RustGenerator {
         return "Vec<()>"
       }
     case "Record":
-      if let keyType = type.keyType, let valueType = type.valueType {
-        // Handle Record with specific key and value types
+      if let fields = type.fields {
+        let fieldDefinitions = fields.map { "\(convertTypeToRust($0.type)) \($0.name)" }.joined(
+          separator: ", ")
+        return "struct { \(fieldDefinitions) }"
+      } else if let keyType = type.keyType, let valueType = type.valueType {
         return
           "std::collections::HashMap<\(convertTypeToRust(TypeNode(name: keyType))), \(convertTypeToRust(TypeNode(name: valueType)))>"
       } else {
-        // Fallback if no key/value is specified
         return "std::collections::HashMap<String, String>"
       }
     default:
       return type.name  // Custom types or unrecognized types are returned as-is
     }
   }
-
 }

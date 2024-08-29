@@ -59,19 +59,11 @@ class SwiftGenerator {
           "func \(functionNode.name)(\(params)) -> \(convertTypeToSwift(functionNode.returnType))")
 
       case .typeNode(let typeNode):
-        print("typenode in switch: ", Serializer.serialize(typeNode) ?? "")
-        if typeNode.name == "Record" {
-          let fields =
-            typeNode.fields?.map { "\($0.name): \(convertTypeToSwift($0.type))" }.joined(
-              separator: ", ") ?? ""
-          lines.append("struct \(typeNode.name) { \(fields) }")
-        } else if let fields = typeNode.fields {
-          let typeDefinition = fields.map { "var \($0.name): \(convertTypeToSwift($0.type))" }
-            .joined(separator: "\n  ")
-          lines.append("struct \(typeNode.name) {\n  \(typeDefinition)\n}")
-        } else if let keyType = typeNode.keyType,
-          let valueType = typeNode.valueType
-        {
+        if let fields = typeNode.fields {
+          let structFields = fields.map { "var \($0.name): \(convertTypeToSwift($0.type))" }.joined(
+            separator: "\n  ")
+          lines.append("struct \(typeNode.name) {\n  \(structFields)\n}")
+        } else if let keyType = typeNode.keyType, let valueType = typeNode.valueType {
           lines.append("typealias \(typeNode.name) = [\(keyType): \(valueType)]")
         } else {
           lines.append("typealias \(typeNode.name) = \(convertTypeToSwift(typeNode))")
@@ -124,17 +116,18 @@ class SwiftGenerator {
         return "[Any]"
       }
     case "Record":
-      if let keyType = type.keyType, let valueType = type.valueType {
-        // Handle Record with specific key and value types
+      if let fields = type.fields {
+        let fieldDefinitions = fields.map { "\($0.name): \(convertTypeToSwift($0.type))" }.joined(
+          separator: ", ")
+        return "[\(fieldDefinitions)]"
+      } else if let keyType = type.keyType, let valueType = type.valueType {
         return
           "[\(convertTypeToSwift(TypeNode(name: keyType))): \(convertTypeToSwift(TypeNode(name: valueType)))]"
       } else {
-        // Default fallback if no key/value is specified
-        return "[String: Any]"
+        return "[String: Any]"  // Default case
       }
     default:
       return type.name  // Custom types or unrecognized types are returned as-is
     }
   }
-
 }

@@ -1,14 +1,6 @@
-//
-//  DSLParser.swift
-//  typemeld
-//
-//  Created by Matej Páleník on 22.08.2024.
-//
-
 import Foundation
 
 final class DSLParser {
-
   var currentlyEvaluated = ""
 
   func parse(_ dsl: String) -> [DSLNode] {
@@ -47,6 +39,126 @@ final class DSLParser {
     return ast
   }
 
+  private func parseStruct(_ lines: [Substring], _ startIndex: Int) -> (StructNode, Int) {
+    let structDeclaration = lines[startIndex].split(separator: " ")
+    let structName = structDeclaration[1]
+    var fields: [StructFieldNode] = []
+    var extendsStruct: String? = nil
+
+    if structDeclaration.contains("extends") {
+      if let extendsIndex = structDeclaration.firstIndex(of: "extends") {
+        extendsStruct = String(structDeclaration[extendsIndex + 1])
+      }
+    }
+
+    var index = startIndex + 1
+    while index < lines.count && !lines[index].starts(with: "}") {
+      let line = lines[index]
+
+      // Handle inline records by checking for '{' and '}'
+      if line.contains("{") && line.contains("}") {
+        let fieldNameAndType = line.split(separator: ":", maxSplits: 1).map {
+          $0.trimmingCharacters(in: .whitespacesAndNewlines)
+        }
+        guard fieldNameAndType.count == 2 else {
+          print("Warning: Skipping malformed line in struct definition: \(line)")
+          index += 1
+          continue
+        }
+
+        let fieldName = fieldNameAndType[0]
+        let fieldType = parseType(String(fieldNameAndType[1]))
+
+        fields.append(
+          StructFieldNode(
+            name: String(fieldName),
+            type: fieldType,  // Use TypeNode here
+            optional: false))
+      } else {
+        // Normal field parsing
+        let parts = line.split(separator: ":", maxSplits: 1).map {
+          $0.trimmingCharacters(in: .whitespacesAndNewlines)
+        }
+        guard parts.count == 2 else {
+          print("Warning: Skipping malformed line in struct definition: \(line)")
+          index += 1
+          continue
+        }
+
+        let fieldName = parts[0]
+        let fieldType = parseType(parts[1])
+        let optional = parts[1].hasSuffix("?")
+        fields.append(
+          StructFieldNode(
+            name: String(fieldName),
+            type: fieldType,
+            optional: optional))
+      }
+
+      index += 1
+    }
+
+    let structNode = StructNode(
+      name: String(structName),
+      fields: fields,
+      implements: nil,
+      methods: [],
+      extends: extendsStruct
+    )
+    print("SERIALIZER: ", Serializer.serialize(structNode) ?? "")
+    return (structNode, index)
+  }
+
+  private func parseType(_ typeString: String) -> TypeNode {
+    // Check for generic type (e.g., SomeThing<T> or Record<string, string>)
+    if let genericStart = typeString.firstIndex(of: "<"),
+      let genericEnd = typeString.lastIndex(of: ">"),
+      genericStart < genericEnd
+    {
+      let baseTypeName = String(typeString[..<genericStart])
+      let genericContent = String(typeString[genericStart...].dropFirst().dropLast())  // Extract the inner part of "<...>"
+
+      // Special handling for "Record<K, V>" types
+      if baseTypeName == "Record" {
+        return parseRecordType(genericTypeName: genericContent)
+      }
+
+      // For generic types like SomeThing<T>
+      let genericTypeNode = parseType(genericContent)
+      return TypeNode(name: baseTypeName, genericType: genericTypeNode)
+    }
+
+    // Check for Array type (ending with [])
+    if typeString.hasSuffix("[]") {
+      let elementType = String(typeString.dropLast(2))  // Remove the "[]" suffix
+      return TypeNode(name: "Array", genericType: parseType(elementType))
+    }
+
+    // Check for inline Record type (enclosed in {})
+    if typeString.hasPrefix("{") && typeString.hasSuffix("}") {
+      let recordContent = typeString.dropFirst().dropLast()
+
+      let fields = recordContent.split(separator: ",").compactMap {
+        fieldString -> StructFieldNode? in
+        let parts = fieldString.split(separator: ":").map {
+          $0.trimmingCharacters(in: .whitespaces)
+        }
+        guard parts.count == 2 else {
+          print("Warning: Malformed record field: \(fieldString)")
+          return nil
+        }
+        return StructFieldNode(
+          name: String(parts[0]),
+          type: parseType(String(parts[1])),
+          optional: false)
+      }
+      return TypeNode(name: "Record", fields: fields)
+    }
+
+    // Handle primitive or custom types
+    return TypeNode(name: typeString)
+  }
+
   private func parseTypeDefinition(_ line: Substring) -> TypeNode {
     let parts = line.split(separator: "=").map { $0.trimmingCharacters(in: .whitespaces) }
     let typeName = parts[0].split(separator: " ")[1]  // Extract "KeyValue" from "type KeyValue"
@@ -79,6 +191,8 @@ final class DSLParser {
     }
 
     if keyValueTypes.count == 2 {
+      print("KV types: ", keyValueTypes)
+
       let typeNode = TypeNode(
         name: "Record", keyType: keyValueTypes[0], valueType: keyValueTypes[1])
 
@@ -88,111 +202,6 @@ final class DSLParser {
       print("Error: Invalid Record type format in DSL: \(genericTypeName)")
       return TypeNode(name: "Record", keyType: "String", valueType: "Any")  // Default fallback
     }
-  }
-
-  private func parseType(_ typeString: String) -> TypeNode {
-    // Check for generic type (e.g., SomeThing<T> or Record<string, string>)
-    if let genericStart = typeString.firstIndex(of: "<"),
-      let genericEnd = typeString.lastIndex(of: ">"),
-      genericStart < genericEnd
-    {
-
-      let baseTypeName = String(typeString[..<genericStart])
-      let genericContent = String(typeString[genericStart...].dropFirst().dropLast())  // Extract the inner part of "<...>"
-
-      // Special handling for "Record<K, V>" types
-      if baseTypeName == "Record" {
-        return parseRecordType(genericTypeName: genericContent)
-      }
-
-      // For generic types like SomeThing<T>
-      let genericTypeNode = parseType(genericContent)
-      return TypeNode(name: baseTypeName, genericType: genericTypeNode)
-    }
-
-    // Check for Array type (ending with [])
-    if typeString.hasSuffix("[]") {
-      let elementType = String(typeString.dropLast(2))  // Remove the "[]" suffix
-      return TypeNode(name: "Array", genericType: parseType(elementType))
-    }
-
-    // Check for Record type (enclosed in {})
-    if typeString.hasPrefix("{") && typeString.hasSuffix("}") {
-      let recordContent = typeString.dropFirst().dropLast()
-
-      let fields = recordContent.split(separator: ",").compactMap {
-        fieldString -> StructFieldNode? in
-        let parts = fieldString.split(separator: ":").map {
-          $0.trimmingCharacters(in: .whitespaces)
-        }
-
-        guard parts.count == 2 else {
-          print("Warning: Malformed record field: \(fieldString)")
-          return nil
-        }
-
-        return StructFieldNode(
-          name: String(parts[0]),
-          type: parseType(String(parts[1])),
-          optional: false)
-      }
-
-      return TypeNode(name: "Record", fields: fields)
-    }
-
-    // Handle primitive or custom types
-    return TypeNode(name: typeString)
-  }
-
-  /// Parses a struct into an AST Node. Currently supports extending other structs.
-  /// - Parameters:
-  ///   - lines:
-  ///   - startIndex:
-  /// - Returns:
-
-  private func parseStruct(_ lines: [Substring], _ startIndex: Int) -> (StructNode, Int) {
-    let structDeclaration = lines[startIndex].split(separator: " ")
-    let structName = structDeclaration[1]
-    var fields: [StructFieldNode] = []
-    var extendsStruct: String? = nil
-
-    if structDeclaration.contains("extends") {
-      if let extendsIndex = structDeclaration.firstIndex(of: "extends") {
-        extendsStruct = String(structDeclaration[extendsIndex + 1])
-      }
-    }
-
-    var index = startIndex + 1
-    while index < lines.count && !lines[index].starts(with: "}") {
-      let line = lines[index]
-      let parts = line.replacingOccurrences(of: ",", with: "").split(separator: ":").map {
-        $0.trimmingCharacters(in: .whitespacesAndNewlines)
-      }
-      guard parts.count == 2 else {
-        print("Warning: Skipping malformed line in struct definition: \(line)")
-        index += 1
-        continue
-      }
-      let fieldName = parts[0]
-      let fieldType = parseType(parts[1])  // Parse the type as TypeNode
-      let optional = parts[1].hasSuffix("?")
-      fields.append(
-        StructFieldNode(
-          name: String(fieldName),
-          type: fieldType,  // Use TypeNode here
-          optional: optional))
-      index += 1
-    }
-
-    let structNode = StructNode(
-      name: String(structName),
-      fields: fields,
-      implements: nil,
-      methods: [],
-      extends: extendsStruct
-    )
-    print("SERIALIZER: ", Serializer.serialize(structNode) ?? "")
-    return (structNode, index)
   }
 
   private func parseInterface(_ lines: [Substring], _ startIndex: Int) -> (InterfaceNode, Int) {
@@ -325,5 +334,4 @@ final class DSLParser {
 
     return FunctionSignatureNode(name: fnName, parameters: params, returnType: returnTypeNode)
   }
-
 }
